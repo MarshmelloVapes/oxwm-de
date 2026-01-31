@@ -12,8 +12,8 @@ Install arch.
 - Audio: pulse
 - Network, copy from ISO or NetworkManager
 
-sudo pacman -Syu
-sudo pacman -S xorg-server base-devel xorg-xinit 
+sudo pacman -Syu \
+sudo pacman -S git base-devel xorg xorg-xinit xorg-xrandr
 mkdir Install
 
 Install YAY

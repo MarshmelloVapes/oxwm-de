@@ -17,17 +17,17 @@ if [[ $INST == "Y" || $INST == "y" ]]; then
     pamixer pactl starship brightnessctl bluez bluez-utils \
     bluetui obsidian xpdf TLP tlpui firefox \
     alacritty rofi xclip feh picom kmix fish vlc vlc-plugin-ffmpeg \
-    vlc-plugin-libav vlc-plugin-gstreamer gnome-disk
+    vlc-plugin-libav vlc-plugin-gstreamer gnome-disk 
     
     # Start the bluetooth service
-    echo -e "Starting the Bluetooth Service...\n"
+    echo -e "Starting the Bluetooth Service and TLP service...\n"
     sudo systemctl enable --now bluetooth.service
     sudo systemctl enable --now tlp.service
     sleep 2
 
-    echo -e "Starting Power Profiles Daemon...\n"
-    sudo systemctl enable power-profiles-daemon.service
-    sleep 2
+    # # echo -e "Starting Power Profiles Daemon...\n"
+    # # sudo systemctl enable power-profiles-daemon.service
+    # sleep 2
 fi
 
 ### Copy Config Files ###
