@@ -24,21 +24,14 @@ local modkey = "Mod4"
 -- Terminal emulator command (defaults to alacritty)
 local terminal = "alacritty"
 
+-- test
+-- local test_name = "alacritty -e curl wttr.in/"
+
 -- Color palette - customize these to match your theme
 -- Alternatively you can import other files in here, such as 
 -- local colors = require("colors.lua") and make colors.lua a file
 -- in the ~/.config/oxwm directory
 local colors = {
-    fg = "#bbbbbb",
-    red = "#f7768e",
-    bg = "#1a1b26",
-    cyan = "#0db9d7",
-    green = "#9ece6a",
-    lavender = "#a9b1d6",
-    light_blue = "#7aa2f7",
-    grey = "#bbbbbb",
-    blue = "#6dade3",
-    purple = "#ad8ee6",
     -- Gruv Style Colors
     gruv_lightred = "#d5c4a1",
     gruv_fg = "#fbf1c7",
@@ -55,17 +48,15 @@ local colors = {
 }
 
 -- Workspace tags - can be numbers, names, or icons (requires a Nerd Font)
-local tags = { "1", "2", "3", "4", "5", "6", "7","8","9" }
--- local tags = { "", "󰊯", "", "", "󰙯", "󱇤", "", "󱘶", "󰧮" } -- Example of nerd font icon tags
+local tags = { "1", "2", "3", "4", "5", "6"}
 
 -- Font for the status bar (use "fc-list" to see available fonts)
-local bar_font = "monospace:size=11"
+local bar_font = "JetBrainsMono Nerd Font:size=11"
 
 -- Define your blocks
--- Similar to widgets in qtile, or dwmblocks
 local blocks = {
     oxwm.bar.block.ram({
-        format = "Ram: {used}/{total} GB",
+        format = "Ram: {used} GB",
         interval = 5,
         color = colors.gruv_lightblue,
         underline = false,
@@ -98,19 +89,6 @@ local blocks = {
     	color = colors.gruv_lightred,
     	underline = false,
      }),
-    --  oxwm.bar.block.static({
-    --     text = " │  ",
-    --     interval = 999999999,
-    --     color = colors.lavender,
-    --     underline = false,
-    -- }),
-    -- oxwm.bar.block.shell({
-    -- 	format = "Temp: {}",
-    -- 	command = "curl -s 'wttr.in/StCatharines?format=%t'",
-    -- 	interval = 3600,
-    -- 	color = colors.red,
-    -- 	underline = false,
-    -- }),
     oxwm.bar.block.static({
         text = " │  ",
         interval = 999999999,
@@ -178,7 +156,6 @@ oxwm.gaps.set_outer(6, 6)
 -- Examples (uncomment to use):
 oxwm.rule.add({ instance = "gimp", floating = true })                             
 -- oxwm.rule.add({ class = "Alacritty", tag = 9, focus = true })                             
--- oxwm.rule.add({ class = "firefox", title = "Library", floating = true })  
 -- oxwm.rule.add({ class = "firefox", tag = 2 })  
 -- oxwm.rule.add({ instance = "mpv", floating = true })                      
 
@@ -223,10 +200,14 @@ oxwm.bar.set_scheme_urgent(colors.gruv_red, colors.gruv_bg, colors.gruv_red)
 -- Basic window management
 
 oxwm.key.bind({ modkey }, "Return", oxwm.spawn_terminal())
+
 -- Launch rofi
 oxwm.key.bind({ modkey }, "D", oxwm.spawn({ "sh", "-c", "~/.config/rofi/launchers/type-2/launcher.sh" }))
+
 -- Copy screenshot to clipboard
-oxwm.key.bind({ modkey }, "S", oxwm.spawn({ "sh", "-c", "maim -s | xclip -selection clipboard -t image/png" }))
+oxwm.key.bind({ modkey, "Shift" }, "S", oxwm.spawn({ "sh", "-c", "maim -s | xclip -selection clipboard -t image/png" }))
+
+-- Kill program
 oxwm.key.bind({ modkey }, "Q", oxwm.client.kill())
 
 -- Volume Controls
@@ -248,9 +229,6 @@ oxwm.key.bind({ modkey, "Shift" }, "Slash", oxwm.show_keybinds())
 oxwm.key.bind({ modkey, "Shift" }, "F", oxwm.client.toggle_fullscreen())
 oxwm.key.bind({ modkey, "Shift" }, "Space", oxwm.client.toggle_floating())
 
--- Layout management
-oxwm.key.bind({ modkey, "Shift"  }, "N", oxwm.layout.set("normie"))
-oxwm.key.bind({ modkey }, "C", oxwm.layout.set("tiling"))
 -- Cycle through layouts
 oxwm.key.bind({ modkey }, "N", oxwm.layout.cycle())
 
@@ -344,10 +322,10 @@ oxwm.key.chord({
     { { modkey }, "Space" },
     { {},         "B" }
 }, oxwm.spawn({ "sh", "-c", "alacritty -e bluetui" }))
-oxwm.key.chord({
-    { { modkey }, "Space" },
-    { {},         "S" }
-}, oxwm.spawn({ "sh", "-c", "alacritty -e flameshot full -c -p ~/Photos/" }))
+-- oxwm.key.chord({
+--     { { modkey }, "Space" },
+--     { {},         "P" }
+-- }, oxwm.spawn({ "sh", "-c", test_name }))
 
 -------------------------------------------------------------------------------
 -- Autostart
@@ -356,5 +334,5 @@ oxwm.key.chord({
 -- Uncomment and modify these examples, or add your own
 
 oxwm.autostart("picom")                                  
-oxwm.autostart("feh --bg-scale ~/.config/backgrounds/background-3.png") 
+oxwm.autostart("feh --bg-scale ~/Downloads/background-3.png") 
 -- oxwm.autostart("nm-applet")

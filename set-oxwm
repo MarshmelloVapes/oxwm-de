@@ -15,13 +15,14 @@ read -n1 -rep 'Would you like to install the packages? (y,n)' INST
 if [[ $INST == "Y" || $INST == "y" ]]; then
     yay -S --noconfirm oxwm-git thunar ttf-jetbrains-mono-nerd noto-fonts-emoji \
     pamixer pactl starship brightnessctl bluez bluez-utils \
-    bluetui obsidian xpdf power-profiles-daemon firefox flameshot \
+    bluetui obsidian xpdf TLP tlpui firefox \
     alacritty rofi xclip feh picom kmix fish vlc vlc-plugin-ffmpeg \
     vlc-plugin-libav vlc-plugin-gstreamer gnome-disk
     
     # Start the bluetooth service
     echo -e "Starting the Bluetooth Service...\n"
     sudo systemctl enable --now bluetooth.service
+    sudo systemctl enable --now tlp.service
     sleep 2
 
     echo -e "Starting Power Profiles Daemon...\n"
