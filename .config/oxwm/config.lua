@@ -157,7 +157,7 @@ oxwm.gaps.set_outer(6, 6)
 oxwm.rule.add({ instance = "gimp", floating = true })                             
 -- oxwm.rule.add({ class = "Alacritty", tag = 9, focus = true })                             
 -- oxwm.rule.add({ class = "firefox", tag = 2 })  
--- oxwm.rule.add({ instance = "mpv", floating = true })                      
+oxwm.rule.add({ instance = "kitty", floating = true })                      
 
 -- To find window properties, use xprop and click on the window
 -- WM_CLASS(STRING) shows both instance and class (instance, class)
@@ -322,10 +322,14 @@ oxwm.key.chord({
     { { modkey }, "Space" },
     { {},         "B" }
 }, oxwm.spawn({ "sh", "-c", "alacritty -e bluetui" }))
--- oxwm.key.chord({
---     { { modkey }, "Space" },
---     { {},         "P" }
--- }, oxwm.spawn({ "sh", "-c", test_name }))
+oxwm.key.chord({
+    { { modkey }, "Space" },
+    { {},         "W" }
+}, oxwm.spawn({ "sh", "-c", "alacritty -e ~/.scripts/WTTR/wttr" }))
+oxwm.key.chord({
+    { { modkey }, "Space" },
+    { {},         "S" }
+}, oxwm.spawn({ "sh", "-c", "kitty -e ~/.scripts/BTC-Price/WatchList" }))
 
 -------------------------------------------------------------------------------
 -- Autostart

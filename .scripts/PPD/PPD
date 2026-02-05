@@ -1,0 +1,38 @@
+#!/bin/bash
+
+clear
+echo "=============================="
+echo "        Power Profile         "
+echo "=============================="
+echo "a) Performance"
+echo "b) Balanced"
+echo "c) Power Saver"
+echo "q) Quit"
+echo "=============================="
+
+read -rp "Select an option: " choice
+
+case "$choice" in
+  a|A)
+    echo "Setting power profile to Performance."
+    # Task A
+    sleep 1
+    ;;
+  b|B)
+    echo "Setting power profile to Blanaced."
+    # Task B
+    sleep 1
+    ;;
+  c|C)
+    echo "Setting power profile to Power-Saver."
+    # Task C
+    sleep 1
+    ;;
+  q|Q)
+    echo "Quiting program."
+    exit 0
+    ;;
+  *)
+    echo "Invalid selection"
+    ;;
+esac

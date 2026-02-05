@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+SYMBOLS=("BTC-USD" "SPY" "QQQ" "XEQT.TO" "LUNR" "AAPL" "META" "BA" "LUMN" "BBAI" "BB")
+API_BASE="https://query1.finance.yahoo.com/v8/finance/chart"
+
+USER_AGENT="Mozilla/5.0"
+
+printf "%-12s %-8s %-8s %-14s %-14s %-10s\n" \
+  "DATE" "TIME" "SYMBOL" "PRICE" "PREV CLOSE" "% CHANGE"
+printf "%-12s %-8s %-8s %-14s %-14s %-10s\n" \
+  "------------" "--------" "--------" "--------------" "--------------" "----------"
+
+for SYMBOL in "${SYMBOLS[@]}"; do
+  json=$(curl -s \
+    -H "User-Agent: $USER_AGENT" \
+    -H "Accept: application/json" \
+    "$API_BASE/$SYMBOL")
+
+  # Validate JSON
+  if ! echo "$json" | jq . >/dev/null 2>&1; then
+    echo "Failed to fetch data for $SYMBOL"
+    continue
+  fi
+
+  price=$(echo "$json" | jq -r '.chart.result[0].meta.regularMarketPrice')
+  prev_close=$(echo "$json" | jq -r '.chart.result[0].meta.chartPreviousClose')
+  timestamp=$(echo "$json" | jq -r '.chart.result[0].meta.regularMarketTime')
+
+  pct_change=$(awk -v p="$price" -v c="$prev_close" 'BEGIN {
+    if (c == 0) { print "N/A"; exit }
+    printf "%.2f%%", ((p - c) / c) * 100
+  }')
+
+  date=$(date -d "@$timestamp" "+%Y-%m-%d")
+  time=$(date -d "@$timestamp" "+%H:%M:%S")
+
+  printf "%-12s %-8s %-8s %-14.2f %-14.2f %-10s\n" \
+    "$date" "$time" "$SYMBOL" "$price" "$prev_close" "$pct_change"
+done
+
+read -p "Press Enter to close..."

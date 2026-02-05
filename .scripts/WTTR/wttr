@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# Run your command
+curl wttr.in
+
+# Wait for user input before exiting
+read -p "Press Enter to close..."

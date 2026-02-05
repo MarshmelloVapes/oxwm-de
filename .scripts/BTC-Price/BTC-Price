@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+URL="https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD"
+
+json=$(curl -s \
+  -H "User-Agent: Mozilla/5.0" \
+  -H "Accept: application/json" \
+  "$URL")
+
+price=$(echo "$json" | jq -r '.chart.result[0].meta.regularMarketPrice')
+prev_close=$(echo "$json" | jq -r '.chart.result[0].meta.chartPreviousClose')
+
+pct_change=$(awk -v p="$price" -v c="$prev_close" 'BEGIN {
+  printf "%.2f", ((p - c) / c) * 100
+}')
+
+echo "        Stock          |         Change          "
+echo "BTC Price: $price USD | 24h Change: $pct_change%"
