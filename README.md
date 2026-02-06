@@ -8,9 +8,9 @@ station wlan0 scan
 station wlan0 connect SSID
 Enter password / exit.
 
-Install arch.
-- Audio: pulse
-- Network, copy from ISO or NetworkManager
+Install arch.\
+Audio: pulse\
+Network, copy from ISO or NetworkManager
 
 sudo pacman -Syu \
 sudo pacman -S git base-devel xorg xorg-xinit xorg-xrandr
@@ -28,3 +28,14 @@ sudo chmod +x set-oxwm
 ./set-oxwm
 
 This script sets up the basic system that I am personally after.
+
+# Questrade Setup
+1) Install Wine
+2) Install WineTricks
+3) Create new wine prefix, 64 bit.
+4) Set wineprefix:
+    1) winetricks dxvk
+    2) winetricks d3dcompiler_47 d3dx11_43
+    3) winetricks corefonts dotnet48
+    4) Install Questrade Edge
+5) Set up Alias to access prefix and run Questrade Edge
