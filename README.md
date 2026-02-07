@@ -32,10 +32,16 @@ This script sets up the basic system that I am personally after.
 # Questrade Setup
 1) Install Wine
 2) Install WineTricks
-3) Create new wine prefix, 64 bit.
-4) Set wineprefix:
+3) Install Vulkan
+4) Create new wine prefix, 64 bit.
+5) Set wineprefix:
     1) winetricks dxvk
     2) winetricks d3dcompiler_47 d3dx11_43
     3) winetricks corefonts dotnet48
     4) Install Questrade Edge
-5) Set up Alias to access prefix and run Questrade Edge
+6) Set up Alias to access prefix and run Questrade Edge
+
+# Screenshots
+![Example-1](./Screenshots/example-1.png)
+![Example-2](./Screenshots/example-2.png)
+![Example-3](./Screenshots/example-3.png)
