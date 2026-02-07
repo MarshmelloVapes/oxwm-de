@@ -22,7 +22,7 @@ cd yay\
 makepkg -si
 
 Install this Desktop\
-git clone https://github.com/MarshmelloVapes/OXWM-DE.git\
+git clone https://github.com/MarshmelloVapes/OXWM-DE.git \
 cd oxwm-de\
 sudo chmod +x set-oxwm\
 ./set-oxwm
