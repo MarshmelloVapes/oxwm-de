@@ -17,7 +17,7 @@ if [[ $INST == "Y" || $INST == "y" ]]; then
     pamixer pactl starship brightnessctl bluez bluez-utils \
     bluetui obsidian xpdf TLP tlpui firefox \
     alacritty rofi xclip feh picom kmix fish vlc vlc-plugin-ffmpeg \
-    vlc-plugin-libav vlc-plugin-gstreamer gnome-disk kitty
+    vlc-plugin-libav vlc-plugin-gstreamer gnome-disk kitty wine winetricks
     
     # Start the bluetooth service
     echo -e "Starting the Bluetooth Service and TLP service...\n"
@@ -45,6 +45,9 @@ if [[ $CFG == "Y" || $CFG == "y" ]]; then
     cp -R /.scripts ~/.scripts/
     cp .bashrc ~/
     cp .xinitrc ~/
+
+    sudo chmod +x ~/.scripts/WTTR/wttr
+    sudo chmod +x ~/.scripts/BTC-Price/WatchList
 fi
 
 
