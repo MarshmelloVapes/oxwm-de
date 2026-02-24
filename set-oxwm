@@ -18,7 +18,7 @@ if [[ $INST == "Y" || $INST == "y" ]]; then
     bluetui obsidian xpdf TLP tlpui firefox \
     alacritty rofi xclip feh picom kmix fish vlc vlc-plugin-ffmpeg \
     vlc-plugin-libav vlc-plugin-gstreamer gnome-disk kitty wine winetricks \
-    pulse-bluetooth
+    pulseaudio-bluetooth
     
     # Start the bluetooth service
     echo -e "Starting the Bluetooth Service and TLP service...\n"
@@ -42,8 +42,8 @@ if [[ $CFG == "Y" || $CFG == "y" ]]; then
     mkdir ~/Videos
     mkdir ~/Photos
     
-    cp -R /.config ~/.config/
-    cp -R /.scripts ~/.scripts/
+    cp -R /.config/ ~/.config/
+    cp -R /.scripts/ ~/.scripts/
     cp .bashrc ~/
     cp .xinitrc ~/
 
