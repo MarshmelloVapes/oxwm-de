@@ -1,0 +1,434 @@
+
+#!/usr/bin/env bash
+
+API_BASE="https://query1.finance.yahoo.com/v8/finance/chart"
+USER_AGENT="Mozilla/5.0"
+
+WATCHLIST=("BTC-USD" "XMR-USD" "ETH-USD" "SPY" "QQQ" "XEQT.TO" "LUNR" "AAPL" "META" "BA" "LUMN" "BBAI" "BB")
+
+PORTFOLIO_FILE="portfolio.csv"
+CASH_FILE="cash.txt"
+HISTORY_FILE="history.csv"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+touch "$PORTFOLIO_FILE"
+touch "$HISTORY_FILE"
+[[ ! -f "$CASH_FILE" ]] && echo "0" > "$CASH_FILE"
+
+# ------------------ UTIL ------------------
+
+get_price() {
+  json=$(curl -s -H "User-Agent: $USER_AGENT" "$API_BASE/$1")
+  echo "$json" | jq -r '.chart.result[0].meta.regularMarketPrice'
+}
+
+colorize() {
+  val=$1
+  if (( $(echo "$val > 0" | bc -l) )); then
+    echo -e "${GREEN}${val}${NC}"
+  elif (( $(echo "$val < 0" | bc -l) )); then
+    echo -e "${RED}${val}${NC}"
+  else
+    echo "$val"
+  fi
+}
+
+# ------------------ WATCHLIST ------------------
+
+show_watchlist() {
+  printf "\n%-10s %-12s %-12s %-10s\n" "SYMBOL" "PRICE" "PREV" "%"
+
+  for SYMBOL in "${WATCHLIST[@]}"; do
+    json=$(curl -s -H "User-Agent: $USER_AGENT" "$API_BASE/$SYMBOL")
+    price=$(echo "$json" | jq -r '.chart.result[0].meta.regularMarketPrice')
+    prev=$(echo "$json" | jq -r '.chart.result[0].meta.chartPreviousClose')
+    pct=$(awk -v p="$price" -v c="$prev" 'BEGIN{print ((p-c)/c)*100}')
+
+    pct_col=$(colorize "$(printf "%.2f" "$pct")")"%"
+    printf "%-10s %-12.2f %-12.2f %-10b\n" "$SYMBOL" "$price" "$prev" "$pct_col"
+  done
+}
+
+# ------------------ ADD TRADE ------------------
+
+add_trade() {
+  read -p "Symbol: " symbol
+  read -p "Shares: " shares
+  read -p "Buy Price: " price
+  date=$(date "+%Y-%m-%d")
+
+  echo "$symbol,$shares,$price,$date,OPEN" >> "$PORTFOLIO_FILE"
+  echo "Trade added."
+}
+
+# ------------------ SELL TRADE ------------------
+
+sell_trade() {
+  echo "Open trades:"
+  grep "OPEN" "$PORTFOLIO_FILE" | nl
+
+  read -p "Select trade #: " num
+  line=$(grep "OPEN" "$PORTFOLIO_FILE" | sed -n "${num}p")
+
+  symbol=$(echo "$line" | cut -d',' -f1)
+  shares=$(echo "$line" | cut -d',' -f2)
+  buy=$(echo "$line" | cut -d',' -f3)
+
+  live=$(get_price "$symbol")
+  profit=$(awk -v s="$shares" -v b="$buy" -v l="$live" 'BEGIN{print (l-b)*s}')
+
+  sed -i "s|$line|$symbol,$shares,$buy,$(date +%Y-%m-%d),SOLD,$live,$profit|" "$PORTFOLIO_FILE"
+
+  echo "Closed. Realized P/L: $(colorize "$(printf "%.2f" "$profit")")"
+}
+
+# ------------------ CASH ------------------
+
+add_cash() {
+  read -p "Add amount: " amt
+  current=$(cat "$CASH_FILE")
+  echo "$(awk -v c="$current" -v a="$amt" 'BEGIN{print c+a}')" > "$CASH_FILE"
+}
+
+remove_cash() {
+  read -p "Remove amount: " amt
+  current=$(cat "$CASH_FILE")
+  echo "$(awk -v c="$current" -v a="$amt" 'BEGIN{print c-a}')" > "$CASH_FILE"
+}
+
+# ------------------ DASHBOARD ------------------
+
+show_portfolio() {
+
+  printf "\n%-10s %-8s %-10s %-10s %-12s %-10s\n" \
+    "SYMBOL" "SHARES" "BUY" "LIVE" "P/L $" "P/L %"
+
+  total_market=0
+  total_cost=0
+
+  while IFS=',' read -r symbol shares buy date status rest; do
+    [[ "$status" != "OPEN" ]] && continue
+
+    live=$(get_price "$symbol")
+    value=$(awk -v s="$shares" -v l="$live" 'BEGIN{print s*l}')
+    cost=$(awk -v s="$shares" -v b="$buy" 'BEGIN{print s*b}')
+    pl=$(awk -v v="$value" -v c="$cost" 'BEGIN{print v-c}')
+    pct=$(awk -v l="$live" -v b="$buy" 'BEGIN{print ((l-b)/b)*100}')
+
+    total_market=$(awk -v t="$total_market" -v v="$value" 'BEGIN{print t+v}')
+    total_cost=$(awk -v t="$total_cost" -v v="$cost" 'BEGIN{print t+v}')
+
+    printf "%-10s %-8s %-10.2f %-10.2f %-12b %-10b\n" \
+      "$symbol" "$shares" "$buy" "$live" \
+      "$(colorize "$(printf "%.2f" "$pl")")" \
+      "$(colorize "$(printf "%.2f" "$pct")")%"
+  done < "$PORTFOLIO_FILE"
+
+  cash=$(cat "$CASH_FILE")
+  total_account=$(awk -v m="$total_market" -v c="$cash" 'BEGIN{print m+c}')
+  total_return=$(awk -v a="$total_account" -v c="$total_cost" 'BEGIN{print a-c}')
+  total_return_pct=$(awk -v r="$total_return" -v c="$total_cost" 'BEGIN{if(c==0)print 0; else print (r/c)*100}')
+
+  echo
+  echo -e "${YELLOW}----- SUMMARY -----${NC}"
+  echo "Market Value:  $(printf "%.2f" "$total_market")"
+  echo "Cash:          $(printf "%.2f" "$cash")"
+  echo "Total Value:   $(printf "%.2f" "$total_account")"
+  echo -n "Total Return:  "
+  colorize "$(printf "%.2f" "$total_return")"
+  echo -n "Return %:      "
+  colorize "$(printf "%.2f" "$total_return_pct")"
+  echo "%"
+
+  log_snapshot "$total_account"
+}
+
+# ------------------ SNAPSHOT ------------------
+
+log_snapshot() {
+  today=$(date "+%Y-%m-%d")
+  spy=$(get_price "SPY")
+  echo "$today,$1,$spy" >> "$HISTORY_FILE"
+}
+
+# ------------------ ANALYTICS ------------------
+analytics() {
+
+  echo
+  echo -e "${YELLOW}----- FULL HEDGE FUND METRICS -----${NC}"
+
+  prev_val=""
+  prev_spy=""
+  returns=()
+  spy_returns=()
+  values=()
+
+  while IFS=',' read -r date value spy; do
+    values+=($value)
+
+    if [[ -n "$prev_val" ]]; then
+      r=$(awk -v v="$value" -v p="$prev_val" 'BEGIN{print (v-p)/p}')
+      sr=$(awk -v v="$spy" -v p="$prev_spy" 'BEGIN{print (v-p)/p}')
+      returns+=($r)
+      spy_returns+=($sr)
+    fi
+
+    prev_val=$value
+    prev_spy=$spy
+  done < "$HISTORY_FILE"
+
+  n=${#returns[@]}
+  if (( n < 5 )); then
+    echo "Not enough history yet."
+    return
+  fi
+
+  # ---- Average Return ----
+  sum=0
+  for r in "${returns[@]}"; do
+    sum=$(awk -v s="$sum" -v r="$r" 'BEGIN{print s+r}')
+  done
+  avg=$(awk -v s="$sum" -v n="$n" 'BEGIN{print s/n}')
+
+  # ---- SPY Average ----
+  spy_sum=0
+  for r in "${spy_returns[@]}"; do
+    spy_sum=$(awk -v s="$spy_sum" -v r="$r" 'BEGIN{print s+r}')
+  done
+  spy_avg=$(awk -v s="$spy_sum" -v n="$n" 'BEGIN{print s/n}')
+
+  # ---- Volatility ----
+  var=0
+  downside_var=0
+
+  for r in "${returns[@]}"; do
+    var=$(awk -v v="$var" -v r="$r" -v a="$avg" 'BEGIN{print v+(r-a)^2}')
+    if (( $(echo "$r < 0" | bc -l) )); then
+      downside_var=$(awk -v v="$downside_var" -v r="$r" \
+        'BEGIN{print v+(r^2)}')
+    fi
+  done
+
+  variance=$(awk -v v="$var" -v n="$n" 'BEGIN{print v/(n-1)}')
+  vol=$(awk -v v="$variance" 'BEGIN{print sqrt(v)*sqrt(252)}')
+
+  downside_dev=$(awk -v v="$downside_var" -v n="$n" \
+    'BEGIN{print sqrt(v/n)*sqrt(252)}')
+
+  # ---- Sharpe ----
+  sharpe=$(awk -v a="$avg" -v v="$vol" \
+    'BEGIN{if(v==0) print 0; else print (a*252)/v}')
+
+  # ---- Sortino ----
+  sortino=$(awk -v a="$avg" -v d="$downside_dev" \
+    'BEGIN{if(d==0) print 0; else print (a*252)/d}')
+
+  # ---- Beta + Correlation ----
+  cov=0
+  spy_var=0
+
+  for i in "${!returns[@]}"; do
+    cov=$(awk -v c="$cov" -v r="${returns[$i]}" -v sr="${spy_returns[$i]}" -v a="$avg" -v sa="$spy_avg" \
+      'BEGIN{print c+((r-a)*(sr-sa))}')
+    spy_var=$(awk -v sv="$spy_var" -v sr="${spy_returns[$i]}" -v sa="$spy_avg" \
+      'BEGIN{print sv+((sr-sa)^2)}')
+  done
+
+  cov=$(awk -v c="$cov" -v n="$n" 'BEGIN{print c/(n-1)}')
+  spy_var=$(awk -v sv="$spy_var" -v n="$n" 'BEGIN{print sv/(n-1)}')
+
+  beta=$(awk -v c="$cov" -v v="$spy_var" \
+    'BEGIN{if(v==0) print 0; else print c/v}')
+
+  corr=$(awk -v c="$cov" -v v1="$variance" -v v2="$spy_var" \
+    'BEGIN{if(v1==0 || v2==0) print 0; else print c/(sqrt(v1*v2))}')
+
+  # ---- Alpha ----
+  alpha=$(awk -v a="$avg" -v b="$beta" -v sa="$spy_avg" \
+    'BEGIN{print (a - b*sa)*252}')
+
+  # ---- CAGR ----
+  first=${values[0]}
+  last=${values[-1]}
+  years=$(awk -v n="$n" 'BEGIN{print n/252}')
+  cagr=$(awk -v f="$first" -v l="$last" -v y="$years" \
+    'BEGIN{if(y==0) print 0; else print (l/f)^(1/y)-1}')
+
+  # ---- Max Drawdown ----
+  peak=0
+  max_dd=0
+  for v in "${values[@]}"; do
+    (( $(echo "$v > $peak" | bc -l) )) && peak=$v
+    dd=$(awk -v val="$v" -v p="$peak" 'BEGIN{print (val-p)/p}')
+    (( $(echo "$dd < $max_dd" | bc -l) )) && max_dd=$dd
+  done
+
+  # ---- Calmar ----
+  calmar=$(awk -v c="$cagr" -v m="$max_dd" \
+    'BEGIN{if(m==0) print 0; else print c/(-m)}')
+
+  # ---- Rolling 30d Vol ----
+  if (( n >= 30 )); then
+    rvar=0
+    for ((i=n-30;i<n;i++)); do
+      r=${returns[$i]}
+      rvar=$(awk -v v="$rvar" -v r="$r" 'BEGIN{print v+(r^2)}')
+    done
+    roll_vol=$(awk -v v="$rvar" 'BEGIN{print sqrt(v/30)*sqrt(252)}')
+  else
+    roll_vol=0
+  fi
+
+  # ---- Exposure + Concentration ----
+  total_market=0
+  max_pos=0
+
+  while IFS=',' read -r symbol shares buy date status rest; do
+    [[ "$status" != "OPEN" ]] && continue
+    live=$(get_price "$symbol")
+    val=$(awk -v s="$shares" -v l="$live" 'BEGIN{print s*l}')
+    total_market=$(awk -v t="$total_market" -v v="$val" 'BEGIN{print t+v}')
+    (( $(echo "$val > $max_pos" | bc -l) )) && max_pos=$val
+  done < "$PORTFOLIO_FILE"
+
+  cash=$(cat "$CASH_FILE")
+  total_account=$(awk -v m="$total_market" -v c="$cash" 'BEGIN{print m+c}')
+  concentration=$(awk -v m="$max_pos" -v t="$total_account" \
+    'BEGIN{if(t==0) print 0; else print (m/t)*100}')
+  cash_pct=$(awk -v c="$cash" -v t="$total_account" \
+    'BEGIN{if(t==0) print 0; else print (c/t)*100}')
+
+  # ---- OUTPUT ----
+  echo "CAGR:                 $(printf "%.4f" "$cagr")"
+  echo "Alpha (annual):       $(printf "%.4f" "$alpha")"
+  echo "Beta vs SPY:          $(printf "%.4f" "$beta")"
+  echo "Correlation vs SPY:   $(printf "%.4f" "$corr")"
+  echo "Annual Volatility:    $(printf "%.4f" "$vol")"
+  echo "Rolling 30d Vol:      $(printf "%.4f" "$roll_vol")"
+  echo "Sharpe Ratio:         $(printf "%.4f" "$sharpe")"
+  echo "Sortino Ratio:        $(printf "%.4f" "$sortino")"
+  echo "Max Drawdown:         $(printf "%.4f" "$max_dd")"
+  echo "Calmar Ratio:         $(printf "%.4f" "$calmar")"
+  echo "Largest Position %:   $(printf "%.2f%%" "$concentration")"
+  echo "Cash Allocation %:    $(printf "%.2f%%" "$cash_pct")"
+}
+
+# ------------------ PORTFOLIO SIZER ------------------
+
+position_sizer() {
+
+  echo
+  echo -e "${YELLOW}----- POSITION SIZING OPTIMIZER -----${NC}"
+
+  read -p "Symbol: " symbol
+  price=$(get_price "$symbol")
+
+  if [[ "$price" == "null" ]]; then
+    echo "Invalid symbol."
+    return
+  fi
+
+  echo "Current Price: $price"
+
+  read -p "Win probability (e.g. 0.55): " p
+  read -p "Average Win % (e.g. 0.08 for 8%): " avg_win
+  read -p "Average Loss % (e.g. 0.04 for 4%): " avg_loss
+  read -p "Stop loss % (e.g. 0.05): " stop_loss
+  read -p "Max risk per trade % of portfolio (e.g. 0.02): " risk_pct
+
+  q=$(awk -v p="$p" 'BEGIN{print 1-p}')
+  b=$(awk -v w="$avg_win" -v l="$avg_loss" 'BEGIN{print w/l}')
+
+  kelly=$(awk -v b="$b" -v p="$p" -v q="$q" \
+    'BEGIN{print (b*p - q)/b}')
+
+  half_kelly=$(awk -v k="$kelly" 'BEGIN{print k/2}')
+
+  # Portfolio value
+  total_market=0
+  while IFS=',' read -r symbol shares buy date status rest; do
+    [[ "$status" != "OPEN" ]] && continue
+    live=$(get_price "$symbol")
+    val=$(awk -v s="$shares" -v l="$live" 'BEGIN{print s*l}')
+    total_market=$(awk -v t="$total_market" -v v="$val" 'BEGIN{print t+v}')
+  done < "$PORTFOLIO_FILE"
+
+  cash=$(cat "$CASH_FILE")
+  portfolio=$(awk -v m="$total_market" -v c="$cash" 'BEGIN{print m+c}')
+
+  # Dollar allocations
+  kelly_dollars=$(awk -v f="$kelly" -v p="$portfolio" \
+    'BEGIN{print f*p}')
+
+  half_kelly_dollars=$(awk -v f="$half_kelly" -v p="$portfolio" \
+    'BEGIN{print f*p}')
+
+  # Fixed % risk sizing
+  risk_dollars=$(awk -v r="$risk_pct" -v p="$portfolio" \
+    'BEGIN{print r*p}')
+
+  shares_fixed=$(awk -v r="$risk_dollars" -v sl="$stop_loss" -v pr="$price" \
+    'BEGIN{print r/(sl*pr)}')
+
+  # Volatility targeting (assume 20% target annual vol)
+  read -p "Estimated annual volatility of stock (e.g. 0.35): " stock_vol
+  target_vol=0.20
+
+  vol_weight=$(awk -v t="$target_vol" -v v="$stock_vol" \
+    'BEGIN{print t/v}')
+
+  vol_dollars=$(awk -v w="$vol_weight" -v p="$portfolio" \
+    'BEGIN{print w*p}')
+
+  vol_shares=$(awk -v d="$vol_dollars" -v pr="$price" \
+    'BEGIN{print d/pr}')
+
+  echo
+  echo "----- RESULTS -----"
+  echo "Portfolio Value:        $(printf "%.2f" "$portfolio")"
+  echo
+  echo "Kelly % Allocation:     $(printf "%.4f" "$kelly")"
+  echo "Kelly $ Allocation:     $(printf "%.2f" "$kelly_dollars")"
+  echo
+  echo "Half Kelly %:           $(printf "%.4f" "$half_kelly")"
+  echo "Half Kelly $:           $(printf "%.2f" "$half_kelly_dollars")"
+  echo
+  echo "Fixed Risk $:           $(printf "%.2f" "$risk_dollars")"
+  echo "Shares (Fixed Risk):    $(printf "%.2f" "$shares_fixed")"
+  echo
+  echo "Vol Target $:           $(printf "%.2f" "$vol_dollars")"
+  echo "Shares (Vol Target):    $(printf "%.2f" "$vol_shares")"
+
+}
+
+# ------------------ MENU ------------------
+
+while true; do
+  echo
+  echo "1) Watchlist"
+  echo "2) Portfolio Dashboard"
+  echo "3) Hedge Fund Analytics"
+  echo "4) Add Trade"
+  echo "5) Sell Trade"
+  echo "6) Add Cash"
+  echo "7) Remove Cash"
+  echo "8) Portfolio Sizer"
+  echo "9) Exit"
+  read -p "Select: " opt
+
+  case $opt in
+    1) show_watchlist ;;
+    2) show_portfolio ;;
+    3) analytics ;;
+    4) add_trade ;;
+    5) sell_trade ;;
+    6) add_cash ;;
+    7) remove_cash ;;
+    8) position_sizer ;;
+    9) exit ;;
+  esac
+done
